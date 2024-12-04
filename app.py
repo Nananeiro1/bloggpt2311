@@ -4,20 +4,24 @@ from pydantic import BaseModel
 import openai
 import requests
 
+# Создаем приложение FastAPI
 app = FastAPI()
 
 # Получаем API ключи из переменных окружения
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 newsapi_key = os.environ.get("NEWSAPI_KEY")
 
+# Проверяем, что ключи установлены
 if not openai.api_key:
     raise ValueError("Переменная окружения OPENAI_API_KEY не установлена")
 if not newsapi_key:
     raise ValueError("Переменная окружения NEWSAPI_KEY не установлена")
 
+# Определяем модель данных для входного JSON
 class Topic(BaseModel):
     topic: str
 
+# Функция для получения последних новостей с NewsAPI
 def get_recent_news(topic):
     url = f"https://newsapi.org/v2/everything?q={topic}&apiKey={newsapi_key}"
     response = requests.get(url)
@@ -29,6 +33,7 @@ def get_recent_news(topic):
     recent_news = [article["title"] for article in articles[:1]]
     return "\n".join(recent_news)
 
+# Функция для генерации поста
 def generate_post(topic):
     recent_news = get_recent_news(topic)
 
@@ -84,15 +89,24 @@ def generate_post(topic):
         "post_content": post_content
     }
 
+# Корневой маршрут для проверки работы API
+@app.get("/")
+async def root():
+    return {"message": "API работает! Используйте POST на /generate-post для генерации поста."}
+
+# Маршрут для генерации поста
 @app.post("/generate-post")
 async def generate_post_api(topic: Topic):
     generated_post = generate_post(topic.topic)
     return generated_post
 
+# Маршрут для проверки состояния приложения
 @app.get("/heartbeat")
 async def heartbeat_api():
     return {"status": "OK"}
 
+# Запуск приложения локально
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app:app", host="0.0.0.0", port=8000)
+
